@@ -1,27 +1,16 @@
-import { useState, useEffect } from 'react';
-import Web3 from 'web3';
+import React, { useState, useEffect } from 'react';
 import { ethers, BigNumber, utils } from 'ethers';
 import MetamaskLogo from './assets/coin.png';
 import Coin from "./components/Coin/Coin";
 import { ContractAddress, ContractABI } from './ContractABI';
 import { SpinnerCircular } from 'spinners-react';
+import * as walletDefiwallet from "./helper/wallet-defiwallet.ts";
+
 const options = ["10", "50", "100", "200", "300" ];
-
-const Gasprice = {
-	low: 149,
-	average: 170,
-	fast: 466,
-}
-const calcGasPrice = ethers.utils.parseUnits(
-		`${Gasprice.fast}`,
-		"gwei"
-	)
-
-  
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
-  const [userInfo, setUserInfo] = useState({});
+  const [userInfo, setUserInfo] = useState();
   const [count, setCount] = useState('10');
   const [coin, setCoin] = useState('head');
   const [side, setSide] = useState('head');
@@ -30,36 +19,15 @@ function App() {
   const [eventHistory, setEventHistory] = useState([]);
   const [spin, setSpin] = useState(false);
   const [claimSpin, setClaimSpin] = useState(false);
-
-  const { ethereum } = window;
+  const [provider, setProvider] = useState();
 
   useEffect(() =>  {
-    const checkConnectedWallet = async () => {
-      const userData = JSON.parse(localStorage.getItem('userAccount'));
-      if (userData != null) {
-        setUserInfo(userData);
-        setIsConnected(true);
-        if(ethereum) {
-          const provider = new ethers.providers.Web3Provider(ethereum);
-          const singer = provider.getSigner();
-          try {
-            const contract = new ethers.Contract(ContractAddress, ContractABI, singer);
-            // contract.on('betCompleted', betEvent);
-            const userAmount = await contract.users(userData.account);
-            setAmount(parseInt(userAmount.unclaimed));
-          } catch (error) {
-            alert("Contract Error!", error.error)
-          }
-          
-        }
-      }
-    }
 
     const fetch = async () => {
+      const userData = JSON.parse(localStorage.getItem('userAccount'));
       let eventTmp = [];
-      if(ethereum) {
+      if(userData!= null) {
         
-        const provider = new ethers.providers.Web3Provider(ethereum);
         const singer = provider.getSigner();
         try {
           const contract = new ethers.Contract(ContractAddress, ContractABI, singer);
@@ -70,9 +38,7 @@ function App() {
             for (let index = 0; index < 20; index++) {
               eventTmp.push({bettor:events[index].args[0], status:events[index].args[1], betAmount:events[index].args[2], timeStamp:events[index].args[3]});
             }
-            
             setEventHistory(eventTmp)
-            
           }
           else {
             for (let index = 0; index < events.length; index++) {
@@ -92,34 +58,43 @@ function App() {
     const betEvent = async (bettor, status, betAmount, timeStamp) => {
       
       await fetch();
-      // eventTmp.push({bettor:bettor, status:status, betAmount:betAmount, timeStamp:timeStamp})
       
     }
   
-    if(ethereum) {
-      const provider = new ethers.providers.Web3Provider(ethereum);
+    
+    if(provider) {
       const singer = provider.getSigner();
       const contract = new ethers.Contract(ContractAddress, ContractABI, singer);
       contract.on('betCompleted', betEvent);
     }
-    fetch();
-    checkConnectedWallet();
-  }, [ethereum]);
 
-  
+    fetch();
+  }, []);
+
+  const connectWalletPressed = async () => {
+    let walletStatus;
+    
+    walletStatus = await walletDefiwallet.connect(); 
+       
+    console.log("~~~~~~~~~~~~~~~~~~~~", walletStatus);
+    if (walletStatus.address) {
+      setProvider(walletStatus.browserWeb3Provider)
+      setIsConnected(true);
+    } 
+    else{
+      setUserInfo({message:'connect wallet', launchtime:true})
+    }
+      
+  }
 
   const bettingHandle = async () => {
 
-    if(ethereum) {
       setSpin(true);
-      const provider = new ethers.providers.Web3Provider(ethereum);
       const singer = provider.getSigner();
       try {
         const contract = new ethers.Contract(ContractAddress, ContractABI, singer);
         const time = Date.now();
         let gasPrice = await provider.getGasPrice();
-        
-        // gasprice.wait();
         
         gasPrice.mul(2);
         const transaction = await contract.placeBet(coin, time, { value: ethers.utils.parseUnits(count, 15)})
@@ -154,19 +129,18 @@ function App() {
         alert("Betting Failed!")
       }
       
-    }
   };
 
   const claimHandle = async () => {
-    if(ethereum) {
+
       setClaimSpin(true);
-      const provider = new ethers.providers.Web3Provider(ethereum);
+
       const singer = provider.getSigner();
       try {
         const contract = new ethers.Contract(ContractAddress, ContractABI, singer);
         let tx = await contract.claimRewards()
         //sends 0.1 eth
-        tx = await tx.wait()
+        await tx.wait()
         
         setClaimSpin(false);
         setAmount(0)
@@ -177,79 +151,9 @@ function App() {
         
       }
       
-    }
+    
   }
 
-  const detectCurrentProvider = () => {
-    let provider;
-    if (window.ethereum) {
-      provider = window.ethereum;
-    } else if (window.web3) {
-      // eslint-disable-next-line
-      provider = window.web3.currentProvider;
-    } else {
-      console.log(
-        'Non-Ethereum browser detected. You should consider trying MetaMask!'
-      );
-    }
-    return provider;
-  };
-
-  const onConnect = async () => {
-    try {
-      const currentProvider = detectCurrentProvider();
-      if (currentProvider) {
-        if (currentProvider !== window.ethereum) {
-          console.log(
-            'Non-Ethereum browser detected. You should consider trying MetaMask!'
-          );
-        }
-        await currentProvider.request({ method: 'eth_requestAccounts' });
-        const web3 = new Web3(currentProvider);
-        const userAccount = await web3.eth.getAccounts();
-        const chainId = await web3.eth.getChainId();
-        const account = userAccount[0];
-        let ethBalance = await web3.eth.getBalance(account); // Get wallet balance
-        ethBalance = web3.utils.fromWei(ethBalance, 'ether'); //Convert balance to wei
-        saveUserInfo(ethBalance, account, chainId);
-        if (userAccount.length === 0) {
-          console.log('Please connect to meta mask');
-        }
-      }
-    } catch (err) {
-      console.log(
-        'There was an error fetching your accounts. Make sure your Ethereum client is configured correctly.'
-      );
-    }
-  };
-
-  const onDisconnect = () => {
-    window.localStorage.removeItem('userAccount');
-    setUserInfo({});
-    setIsConnected(false);
-  };
-
-  const saveUserInfo = (ethBalance, account, chainId) => {
-    const userAccount = {
-      account: account,
-      balance: ethBalance,
-      connectionid: chainId,
-    };
-    window.localStorage.setItem('userAccount', JSON.stringify(userAccount)); //user persisted data
-    const userData = JSON.parse(localStorage.getItem('userAccount'));
-    setUserInfo(userData);
-    setIsConnected(true);
-  };
-
-  // const onCountChange = (e) => {
-  //   console.log(e.target.value);
-  //   setCount(e.target.value);
-  // }
-  
-  // const onCoinChange = (e) => {
-  //   console.log(e.target.value);
-  //   setCoin(e.target.value);
-  // }
 
   const relativeTime = (oldTimestamp) => {
     const seconds = Date.now();
@@ -283,11 +187,11 @@ function App() {
         {isConnected && (
           <div className='flex flex-col justify-center items-end'>
             <div className='text-center'>
-              <button className="app-buttons__logout bg-gray-200" onClick={onDisconnect}>
+              <button className="app-buttons__logout bg-gray-200">
                 Disconnect
                 
               </button>
-              <p>{userInfo.account.slice(0,4)}...{userInfo.account.slice(38)}</p>
+              <p>{userInfo.slice(0,4)}...{userInfo.slice(38)}</p>
             </div>
             
         </div>
@@ -297,14 +201,14 @@ function App() {
         {!isConnected && (
           <div>
             <img src={MetamaskLogo} alt="meta mask logo" />
-            <button className="app-buttons__login" onClick={onConnect}>
+            <button className="app-buttons__login" onClick={connectWalletPressed}>
               Connect to MetaMask
             </button>
           </div>
         )}
       </div>
       {isConnected && (
-        <div>
+      <div>
           <div className='mb-5'>
             <Coin side={side} flipping={flipping} />
           </div>
