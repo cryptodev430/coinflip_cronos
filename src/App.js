@@ -24,35 +24,34 @@ function App() {
   useEffect(() =>  {
 
     const fetch = async () => {
-      const userData = JSON.parse(localStorage.getItem('userAccount'));
+      // const userData = JSON.parse(localStorage.getItem('userAccount'));
       let eventTmp = [];
-      if(userData!= null) {
-        
-        const singer = provider.getSigner();
-        try {
-          const contract = new ethers.Contract(ContractAddress, ContractABI, singer);
-          const eventFilter = contract.filters.betCompleted()
-          const events = await contract.queryFilter(eventFilter)
-          events.reverse();
-          if(events.length > 20) {
-            for (let index = 0; index < 20; index++) {
-              eventTmp.push({bettor:events[index].args[0], status:events[index].args[1], betAmount:events[index].args[2], timeStamp:events[index].args[3]});
-            }
-            setEventHistory(eventTmp)
+      // let provider = new ethers.providers.JsonRpcProvider( "https://evm-t3.cronos.org" )
+      console.log("events: fetch", provider);
+      try {
+        const contract = new ethers.Contract(ContractAddress, ContractABI, provider);
+        const eventFilter = contract.filters.betCompleted()
+        const events = await contract.queryFilter(eventFilter)
+        events.reverse();
+        if(events.length > 20) {
+          for (let index = 0; index < 20; index++) {
+            eventTmp.push({bettor:events[index].args[0], status:events[index].args[1], betAmount:events[index].args[2], timeStamp:events[index].args[3]});
           }
-          else {
-            for (let index = 0; index < events.length; index++) {
-              eventTmp.push({bettor:events[index].args[0], status:events[index].args[1], betAmount:events[index].args[2], timeStamp:events[index].args[3]});
-            }
-            
-            setEventHistory(eventTmp)
+          setEventHistory(eventTmp)
         }
-        } catch (error) {
-          alert("Contract Error!");
-        }
-        
-        return eventTmp;
+        else {
+          for (let index = 0; index < events.length; index++) {
+            eventTmp.push({bettor:events[index].args[0], status:events[index].args[1], betAmount:events[index].args[2], timeStamp:events[index].args[3]});
+          }
+          
+          setEventHistory(eventTmp)
       }
+      } catch (error) {
+        console.log("Contract Error!");
+      }
+      
+      return eventTmp;
+      
       
     }
     const betEvent = async (bettor, status, betAmount, timeStamp) => {
@@ -68,8 +67,10 @@ function App() {
       contract.on('betCompleted', betEvent);
     }
 
-    fetch();
-  }, []);
+    if(provider){
+      fetch();
+    }
+  }, [provider]);
 
   const connectWalletPressed = async () => {
     let walletStatus;
@@ -191,7 +192,7 @@ function App() {
                 Disconnect
                 
               </button>
-              <p>{userInfo.slice(0,4)}...{userInfo.slice(38)}</p>
+              <p>{userInfo?.slice(0,4)}...{userInfo?.slice(38)}</p>
             </div>
             
         </div>
