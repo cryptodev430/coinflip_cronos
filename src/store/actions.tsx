@@ -1,13 +1,12 @@
-import { Dispatch, IChainData, IRefreshing, IWallet } from "./interfaces";
+import {
+  Dispatch,
+  IQueryResults,
+  IRefreshing,
+  IWallet,
+  IWalletWeb3Modal,
+} from "./interfaces";
 
 // Send an action to the reducer
-
-export const updateContextAction = (dispatch: Dispatch, context: string) => {
-  return dispatch({
-    type: "CONTEXT_UPDATED",
-    payload: context,
-  });
-};
 
 export const updateRefreshingAction = (
   dispatch: Dispatch,
@@ -26,12 +25,22 @@ export const updateWalletAction = (dispatch: Dispatch, wallet: IWallet) => {
   });
 };
 
-export const updateChainDataAction = (
+export const updateWalletWeb3ModalAction = (
   dispatch: Dispatch,
-  chainData: IChainData
+  walletWeb3Modal: IWalletWeb3Modal
 ) => {
   return dispatch({
-    type: "CHAINDATA_UPDATED",
-    payload: chainData,
+    type: "WALLETWEB3MODAL_UPDATED",
+    payload: walletWeb3Modal,
+  });
+};
+
+export const updateQueryResultsAction = (
+  dispatch: Dispatch,
+  queryResults: IQueryResults
+) => {
+  return dispatch({
+    type: "QUERYRESULTS_UPDATED",
+    payload: queryResults,
   });
 };

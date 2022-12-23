@@ -1,17 +1,18 @@
 import React from "react";
 import {
-  defaultChainData,
+  defaultQueryResults,
   defaultRefreshing,
   defaultWallet,
+  defaultWalletWeb3Modal,
   IAction,
   IState,
 } from "./interfaces";
 
 const initialState: IState = {
-  context: "welcome",
   refreshing: defaultRefreshing,
   wallet: defaultWallet,
-  chainData: defaultChainData,
+  walletWeb3Modal: defaultWalletWeb3Modal,
+  queryResults: defaultQueryResults,
 };
 
 export const Store = React.createContext<IState | any>(initialState);
@@ -20,14 +21,14 @@ export const Store = React.createContext<IState | any>(initialState);
 // Each action has a type and payload
 function reducer(state: IState, action: IAction): IState {
   switch (action.type) {
-    case "CONTEXT_UPDATED":
-      return { ...state, context: action.payload };
     case "REFRESHING_UPDATED":
       return { ...state, refreshing: action.payload };
     case "WALLET_UPDATED":
       return { ...state, wallet: action.payload };
-    case "CHAINDATA_UPDATED":
-      return { ...state, chainData: action.payload };
+    case "WALLETWEB3MODAL_UPDATED":
+      return { ...state, walletWeb3Modal: action.payload };
+    case "QUERYRESULTS_UPDATED":
+      return { ...state, queryResults: action.payload };
     default:
       return state;
   }
