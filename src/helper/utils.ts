@@ -46,7 +46,7 @@ export const getWriteContractInstance = async (
   const contractAbi = CoinFlipJson.abi;
   // Create ethers.Contract object using the smart contract's ABI
   const readContractInstance = new ethers.Contract(
-    config.configVars.coinFlip.address,
+    config.configVars.coinFlip.address_mainnet,
     contractAbi,
     ethersProvider
   );

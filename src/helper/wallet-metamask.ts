@@ -72,7 +72,7 @@ export const connect = async (): Promise<IWallet> => {
       ),
     };
   } catch (e) {
-    window.alert(e);
+    window.alert(e?.message);
     return defaultWallet;
   }
 };

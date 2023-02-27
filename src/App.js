@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ethers, BigNumber, Signer } from "ethers";
 import MetamaskLogo from "./assets/coin.png";
+import LoadingImg from "./assets/loading.gif";
 import Coin from "./components/Coin/Coin";
 import { ContractAddress, ContractABI } from "./ContractABI";
 import { SpinnerCircular } from "spinners-react";
@@ -19,7 +20,7 @@ const options = [
     text: "10",
   },
   {
-    value: 56.5,
+    value: 51.5,
     text: "50",
   },
   {
@@ -53,6 +54,9 @@ function App() {
   const [contractInstance, setContractInstance] = useState();
   const [isShowModal, setShowModal] = useState();
   const [balance, setBlance] = useState();
+  const [isOwner, setIsOwner] = useState();
+  const [deposit, setDeposit] = useState();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const addEventLog = async (newEvent) => {
@@ -86,11 +90,29 @@ function App() {
   useEffect(() => {
     const setInitial = async () => {
       let userAmount = await contractInstance.users(userInfo);
+      console.log("user amount", userAmount);
       setAmount(parseInt(userAmount.unclaimed));
     };
 
     if (userInfo && contractInstance) {
       setInitial();
+    }
+  }, [userInfo, contractInstance]);
+
+  useEffect(() => {
+    const fetchAdmin = async () => {
+      let owner = await contractInstance.owner();
+      console.log(owner.toLocaleLowerCase() == userInfo.toLocaleLowerCase(), "---------------------")
+      if(owner.toLocaleLowerCase() == userInfo.toLocaleLowerCase()){
+        setIsOwner(true)
+      }
+      else{
+        setIsOwner(false)
+      }
+    };
+
+    if (userInfo && contractInstance) {
+      fetchAdmin();
     }
   }, [userInfo, contractInstance]);
 
@@ -143,19 +165,39 @@ function App() {
         // const contract = new ethers.Contract(ContractAddress, ContractABI, signer);
         const eventFilter = contractInstance.filters.betCompleted();
 
-        let startBlock = 6689792;
+        let startBlock = 6089792;
         let endBlock = await provider.getBlockNumber();
+        console.log(startBlock, endBlock);
         let allEvents = [];
-        for (let i = startBlock; i < endBlock; i += 2000) {
-          const _startBlock = i;
-          const _endBlock = Math.min(endBlock, i + 1999);
+
+        let count = 0;
+        while(endBlock > startBlock && count < 10){
+          endBlock = endBlock - 2000;
           let events = await contractInstance.queryFilter(
             eventFilter,
-            _startBlock,
-            _endBlock
+            endBlock,
+            endBlock + 1999
           );
-          allEvents = [...allEvents, ...events];
+          console.log("events", events );
+          events.reverse();
+          if (events.length > 0 ){
+            allEvents = [...allEvents, ...events ];
+            count += events.length;
+          }
         }
+
+              /*for (let i = startBlock; i < endBlock; i += 2000) {
+                const _startBlock = i;
+                const _endBlock = Math.min(endBlock, i + 1999);
+                let events = await contractInstance.queryFilter(
+                  eventFilter,
+                  _startBlock,
+                  _endBlock
+                );
+                console.log("events", events)
+                allEvents = [...allEvents, ...events];
+              }*/
+              
         console.log("allEvents", allEvents)
         // eventFilter.fromBlock = await provider
         //   .getBlockNumber()
@@ -175,7 +217,19 @@ function App() {
         // const events = await contractInstance.queryFilter(eventFilter);
         
 
-        if (allEvents.length > 10) {
+        for (let index = 0; index < allEvents.length; index++) {
+          eventTmp.push({
+            bettor: allEvents[index].args[0],
+            status: allEvents[index].args[1],
+            betAmount: allEvents[index].args[2],
+            timeStamp: allEvents[index].args[3],
+          });
+          if (index > 9 ) break;
+        }
+        setEventHistory(eventTmp);
+        setLoading(false);
+
+        /*if (allEvents.length > 10) {
           for (let index = allEvents.length - 1; index > allEvents.length - 11; index--) {
             eventTmp.push({
               bettor: allEvents[index].args[0],
@@ -195,7 +249,7 @@ function App() {
             });
           }
           setEventHistory(eventTmp);
-        }
+        }*/
       } catch (error) {
         console.log("Contract Error!");
       }
@@ -203,6 +257,7 @@ function App() {
     };
 
     if (contractInstance) {
+      console.log(Math.random());
       fetch();
     }
   }, [contractInstance]);
@@ -295,12 +350,14 @@ function App() {
         } else {
           setSide("tail");
         }
+        alert("You won!")
       } else {
         if (coin === "head") {
           setSide("tail");
         } else {
           setSide("head");
         }
+        alert("You lost")
       }
       setSpin(false);
       setFlipping(true);
@@ -314,6 +371,32 @@ function App() {
       setSpin(false);
       console.log(error);
       alert("Betting Failed!");
+    }
+  };
+  
+  const handleDeposit = async () => {
+    try {
+      let tx = await contractInstance.addMoney( {
+        value: ethers.utils.parseEther(deposit)
+      });
+      tx = await tx.wait();
+      alert("Deposit succes!");
+      updateBalance();
+    } catch (error) {
+      console.log(error);
+      alert("Deposit failed!");
+    }
+  };
+
+  const handleWithdraw = async () => {
+    try {
+      let tx = await contractInstance.withdraw();
+      tx = await tx.wait();
+      alert("Withdraw succes!");
+      updateBalance();
+    } catch (error) {
+      console.log(error);
+      alert("Withdraw failed!");
     }
   };
 
@@ -376,6 +459,31 @@ function App() {
                 {userInfo?.slice(0, 4)}...{userInfo?.slice(38)}
               </p>
               <p>{`Balance: ${balance} CRO`}</p>
+              {isOwner && <button
+                className="app-buttons__logout bg-gray-200"
+                onClick={handleWithdraw}
+              >
+                Withdraw
+              </button>}
+
+              {isOwner && <div>
+                <input
+                  type="text"
+                  name="betcount"
+                  onChange={(e) => {
+                    setDeposit(e.target.value);
+                  }}
+                  style={{"border": "1px solid", "width": '50px'}}
+                />
+                <button
+                  className="app-buttons__logout bg-gray-200"
+                  onClick={handleDeposit}
+                >
+                  Deposit
+                </button>
+              </div>
+              }
+              
             </div>
           </div>
         )}
@@ -503,6 +611,11 @@ function App() {
               </h1>
               <table className="table-auto w-full">
                 <tbody>
+                  {loading && (
+                  <tr>
+                    <td colSpan="5"><img src={LoadingImg} alt="loading gif"></img></td>
+                  </tr>
+                  )}
                   {eventHistory.length > 0 &&
                     eventHistory.map((item, index) => (
                       <tr className="border-b-2 border-black" key={index}>

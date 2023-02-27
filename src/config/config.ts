@@ -1,7 +1,7 @@
 // config/config.ts
 export const configVars = {
   mode: "regular",
-  rpcNetwork: {
+  rpcNetwork_testnet: {
     rpcUrl: "https://evm-t3.cronos.org/",
     chainId: 338,
     chainIdHex: "0x152",
@@ -14,7 +14,7 @@ export const configVars = {
     },
     blockExplorerUrl: "https://cronos.crypto.org/explorer/testnet3/",
   },
-  rpcNetwork_mainnet: {
+  rpcNetwork: {
     rpcUrl: "https://evm.cronos.org/",
     chainId: 25,
     chainIdHex: "0x19",
@@ -29,7 +29,7 @@ export const configVars = {
   },
   coinFlip: {
     address: "0x90B4a5B33C7B2Bd46EA3B1ea40281fD79DFB5B69", // "0x5CA62f6634B36dD8A7469b0f3C6172376D00df78"  on Cronos Testnet
-    address_mainnet: "0xecee7183cb41f382972d436862d690a71520318a", // on Cronos Mainnet
+    address_mainnet: "0x4A9265d53ae921c60cfb3a60d030a3c4Cf9634FE", // on Cronos Mainnet
   },
   logo: {
     defiwallet:
